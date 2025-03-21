@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeShare App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/codemirror.min.css"/>
+    <style>
+        .CodeMirror { height: 70vh; width: 100%; border: 1px solid #ccc; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; background: #0070d2; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .link-display { margin-top: 20px; }
+    </style>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    <h2>CodeShare (Firebase + CodeMirror)</h2>
+    <textarea id="code"></textarea>
+    <button class="btn" id="saveBtn">Save & Generate Link</button>
+    <div class="link-display" id="linkDisplay"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/javascript/javascript.min.js"></script>
+
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // 🔴 Replace this with your firebaseConfig from Firebase Console
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+            lineNumbers: true,
+            mode: "javascript",
+            tabSize: 4
+        });
+
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const codeContent = editor.getValue();
+            if (!codeContent.trim()) {
+                alert("Please enter some code.");
+                return;
+            }
+
+            const docRef = await db.collection("notes").add({
+                content: codeContent,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            const shareLink = `${window.location.origin}/?id=${docRef.id}`;
+            document.getElementById("linkDisplay").innerHTML = `Shareable Link: <a href='${shareLink}' target='_blank'>${shareLink}</a>`;
+        });
+
+        window.addEventListener("load", async () => {
+            const params = new URLSearchParams(window.location.search);
+            const noteId = params.get("id");
+            if (noteId) {
+                const doc = await db.collection("notes").doc(noteId).get();
+                if (doc.exists) {
+                    editor.setValue(doc.data().content);
+                } else {
+                    alert("Note not found.");
+                }
+            }
+        });
+    </script>
+</body>
+</html>
